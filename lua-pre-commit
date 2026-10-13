@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Optional skip 
+if [[ "${SKIP_PRE_COMMIT:-0}" == "1" ]]
+then
+    echo "Skipping pre-commit checks (SKIP_PRE_COMMIT=1)"
+    exit 0
+fi
+
+set -euo pipefail
+
+LUA_FILES=()
+while IFS= read -r file
+do
+    LUA_FILES+=("$file")
+done < <(git diff --name-only --cached --diff-filter=ACMR -- '*.lua')
+
+if [[ ${#LUA_FILES[@]} -eq 0 ]]
+then
+    echo "No Lua files. Skipping lua-pre-commit checks."
+    exit 0
+fi
+
+# lint check
+echo "Running luacheck"
+luacheck "${LUA_FILES[@]}"
+echo "luacheck passed!"
+
+# style check
+echo "Running stylua"
+stylua --check "${LUA_FILES[@]}"
+echo "stylua passed!"

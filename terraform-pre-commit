@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Optional skip 
+if [[ "${SKIP_PRE_COMMIT:-0}" == "1" ]]
+then
+    echo "Skipping pre-commit checks (SKIP_PRE_COMMIT=1)"
+    exit 0
+fi
+
+set -euo pipefail
+
+TERRAFORM_FILES=()
+while IFS= read -r file
+do
+    TERRAFORM_FILES+=("$file")
+done < <(git diff --name-only --cached --diff-filter=ACMR -- '*.tf' '*.tfvars')
+
+if [[ ${#TERRAFORM_FILES[@]} -eq 0 ]]
+then
+    echo "No Terraform files. Skipping terraform-pre-commit checks."
+    exit 0
+fi
+
+# fmt check
+echo "Running fmt check"
+terraform fmt -check -diff "${TERRAFORM_FILES[@]}"
+echo "fmt check passed!"

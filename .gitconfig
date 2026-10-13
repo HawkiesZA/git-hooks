@@ -1,0 +1,16 @@
+[commit]
+	gpgsign = true
+[tag]
+	gpgSign = true
+
+[hook "python-pre-commit"]
+	event = pre-commit
+	command = path-to-python-pre-commit
+[hook "lua-pre-commit"]
+	event = pre-commit
+	command = path-to-lua-pre-commit
+[hook "terraform-pre-commit"]
+	event = pre-commit
+	command = path-to-terraform-pre-commit
+[init]
+	defaultBranch = main

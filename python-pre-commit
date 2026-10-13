@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Optional skip 
+if [[ "${SKIP_PRE_COMMIT:-0}" == "1" ]]
+then
+    echo "Skipping pre-commit checks (SKIP_PRE_COMMIT=1)"
+    exit 0
+fi
+
+set -euo pipefail
+
+PY_FILES=()
+while IFS= read -r file
+do
+    PY_FILES+=("$file")
+done < <(git diff --name-only --cached --diff-filter=ACMR -- '*.py')
+
+if [[ ${#PY_FILES[@]} -eq 0 ]]
+then
+    echo "No Python files. Skipping python-pre-commit checks."
+    exit 0
+fi
+
+# Detect runner
+if [[ -f uv.lock ]] || [[ -f pyproject.toml && -d .venv && -x .venv/bin/uv ]]
+then
+    RUNNER=(uv run)
+elif [[ -f poetry.lock ]]
+then
+    RUNNER=(poetry run)
+else
+    echo "Could not detect uv or poetry project. Expected uv.lock or poetry.lock."
+    exit 1
+fi
+
+echo "Using runner: ${RUNNER[*]}"
+
+echo "Running ruff format"
+"${RUNNER[@]}" ruff format --check "${PY_FILES[@]}"
+echo "ruff format passed!"
+
+echo "Running ruff check"
+"${RUNNER[@]}" ruff check "${PY_FILES[@]}"
+echo "ruff check passed!"
+
+# Optional skip for type checking
+if [[ "${SKIP_TYPECHECK:-0}" == "1" ]]
+then
+    echo "Skipping type checking (SKIP_TYPECHECK=1)"
+    exit 0
+fi
+
+# Prefer ty, fallback to mypy
+if "${RUNNER[@]}" ty --version >/dev/null 2>&1; then
+    echo "Running ty"
+    "${RUNNER[@]}" ty check "${PY_FILES[@]}"
+    echo "ty passed!"
+else
+    echo "ty not available, falling back to mypy"
+    "${RUNNER[@]}" mypy "${PY_FILES[@]}"
+    echo "mypy passed!"
+fi
